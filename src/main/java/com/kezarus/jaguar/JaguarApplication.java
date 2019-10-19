@@ -13,9 +13,10 @@ public class JaguarApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws Exception {
-		String fileNameAndPath = "C:\\WORK\\SOURCES\\JDBC\\_ARCHIVES\\DUMP.TXT";
+		String fileNameAndPath = "C:\\WORK\\_ARCHIVES\\DUMP1.TXT";
+		char separator = ';';
 		
-		MainEngine engine = new MainEngine(fileNameAndPath);
+		MainEngine engine = new MainEngine(fileNameAndPath, separator);
 		
 		engine.run();
 		System.out.println("End of application");

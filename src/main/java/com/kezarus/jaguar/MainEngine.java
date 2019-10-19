@@ -1,10 +1,17 @@
 package com.kezarus.jaguar;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
+
+import org.mozilla.universalchardet.UniversalDetector;
 
 import com.kezarus.jaguar.dao.ConnectionFactory;
 import com.kezarus.jaguar.dao.QueryExecutor;
@@ -13,35 +20,38 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
-
 public class MainEngine {
-	//DATABASE
-	//CONNECTION STRING
-	//FILE PATH
-	String fileNameAndPath;
-	String url = "jdbc:mysql://localhost:3306/test";
-	String user = "root";
-	String pass = "1234";
-	String table = "TEST";
-	
-	public MainEngine( String fileNameAndPath ) {
+	private String fileNameAndPath;
+	private char separator;
+	private String url = "jdbc:mysql://localhost:3306/test";
+	private String user = "root";
+	private String pass = "1234";
+	private String table = "TEST";
+
+	public MainEngine(String fileNameAndPath, char separator) {
 		this.fileNameAndPath = fileNameAndPath;
+		this.separator = separator;
 	}
-	
-	public void run() {
-		//CONNECTION POOL SETUP
+
+	public void run() throws IOException {
+		// CONNECTION POOL SETUP
 		ConnectionFactory connFactory = new ConnectionFactory(url, user, pass);
-		
+
 		ArrayList<Object[]> arrValues = new ArrayList<Object[]>();
-		CSVParser csvParser = new CSVParserBuilder().withSeparator(';').build();
+		CSVParser csvParser = new CSVParserBuilder().withSeparator(separator).build();
+
+		// FILE DETECT FORMAT
+		File file = new File(fileNameAndPath);
+		String encoding = getFileCharset(file);
 		
-		
-		try (CSVReader csvReader = new CSVReaderBuilder(new FileReader(fileNameAndPath)).withCSVParser(csvParser).build()) {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), encoding));
+
+		try (CSVReader csvReader = new CSVReaderBuilder(reader).withCSVParser(csvParser).build()) {
 			String[] values = null;
-			
-			//GET HEADER
+
+			// GET HEADER
 			String[] header = csvReader.readNext();
-			
+
 			long index = 0;
 			while (true) {
 				index++;
@@ -52,7 +62,7 @@ public class MainEngine {
 				}
 
 				if (index % 100000 == 0 || (values == null && arrValues.size() > 0)) {
-					//New Batch index
+					// New Batch index
 					QueryExecutor.insertBatch(connFactory.getConnection(), table, header, arrValues);
 					arrValues.clear();
 				}
@@ -61,15 +71,34 @@ public class MainEngine {
 					break;
 				}
 			}
-		}catch(FileNotFoundException e){
+		} catch (FileNotFoundException e) {
 			e.printStackTrace();
-		}catch(IOException e){
+		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 	}
 
-	
-	
+	public static String getFileCharset(File file) throws IOException {
+		byte[] buf = new byte[4096];
+		BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(file));
+		final UniversalDetector universalDetector = new UniversalDetector(null);
+		int numberOfBytesRead;
+		
+		while ((numberOfBytesRead = bufferedInputStream.read(buf)) > 0 && !universalDetector.isDone()) {
+			universalDetector.handleData(buf, 0, numberOfBytesRead);
+		}
+		
+		universalDetector.dataEnd();
+		String encoding = universalDetector.getDetectedCharset();
+		if(encoding == null) {
+			encoding = StandardCharsets.UTF_8.name();
+		}
+		
+		universalDetector.reset();
+		bufferedInputStream.close();
+		return encoding;
+	}
+
 }

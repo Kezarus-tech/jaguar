@@ -13,7 +13,8 @@ public class QueryExecutor {
 		int arrIndex = 0;
 
 		for (int i = 0; i < fieldNames.length; i++) {
-			fields.append("`" + fieldNames[i] + "`,");
+			//fields.append("`" + fieldNames[i] + "`,");
+			fields.append(fieldNames[i] + ",");
 			valuesMarker.append("?,");
 		}
 		fields.deleteCharAt(fields.length() - 1);
@@ -39,7 +40,8 @@ public class QueryExecutor {
 			}
 		}
 
-		connection.setAutoCommit(true);
+		connection.commit();
+		//connection.setAutoCommit(true);
 		connection.close();
 	}
 }
